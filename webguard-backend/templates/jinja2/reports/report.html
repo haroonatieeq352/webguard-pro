@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGuard Pro Security Report - {{ scan_request.url }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+            @top-right {
+                content: "WebGuard Pro Audit Report";
+                font-family: 'Inter', 'Helvetica Neue', sans-serif;
+                font-size: 8pt;
+                color: #94a3b8;
+                font-weight: 500;
+            }
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: 'Inter', 'Helvetica Neue', sans-serif;
+                font-size: 8pt;
+                color: #94a3b8;
+            }
+        }
+        body {
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            color: #1e293b;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 0;
+            font-size: 11pt;
+            line-height: 1.6;
+        }
+        h1, h2, h3, h4 {
+            color: #0f172a;
+            font-weight: 700;
+            margin-top: 0;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        
+        /* Cover Page Styling */
+        .cover-page {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding-top: 40mm;
+            text-align: center;
+        }
+        .cover-logo-title {
+            font-size: 36pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+            letter-spacing: -1px;
+        }
+        .cover-logo-subtitle {
+            font-size: 14pt;
+            font-weight: 600;
+            color: #00b4d8;
+            margin: 5px 0 0 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .cover-divider {
+            height: 4px;
+            background-color: #00b4d8;
+            width: 150px;
+            margin: 30px auto;
+        }
+        .cover-scan-target {
+            font-size: 18pt;
+            font-weight: 600;
+            color: #334155;
+            word-break: break-all;
+            margin: 50px 0 10px 0;
+        }
+        .cover-meta {
+            margin-top: 80px;
+            font-size: 11pt;
+            color: #64748b;
+        }
+        .cover-score-badge {
+            display: inline-block;
+            background-color: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px 40px;
+            margin: 30px 0;
+        }
+        .cover-score-val {
+            font-size: 48pt;
+            font-weight: 800;
+            color: #00b4d8;
+            line-height: 1;
+        }
+        .cover-score-label {
+            font-size: 11pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+        
+        /* Section Styling */
+        .section-title {
+            font-size: 20pt;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            color: #0f172a;
+        }
+        .grid-container {
+            display: table;
+            width: 100%;
+            margin: 20px 0;
+        }
+        .grid-row {
+            display: table-row;
+        }
+        .grid-cell {
+            display: table-cell;
+            width: 33.33%;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .score-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .score-card-title {
+            font-size: 10pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+        .score-card-value {
+            font-size: 24pt;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .score-card-value.good { color: #2ed573; }
+        .score-card-value.medium { color: #ffa502; }
+        .score-card-value.poor { color: #ff4757; }
+        
+        /* Progress Bar Graph Styling */
+        .progress-bar-container {
+            background-color: #e2e8f0;
+            border-radius: 6px;
+            height: 8px;
+            width: 100%;
+            margin: 10px 0 0 0;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+        }
+        .progress-bar-fill.good-bg { background-color: #2ed573; }
+        .progress-bar-fill.medium-bg { background-color: #ffa502; }
+        .progress-bar-fill.poor-bg { background-color: #ff4757; }
+        
+        /* Executive Summary Paragraphs */
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            font-size: 10pt;
+            font-weight: 700;
+            border-radius: 4px;
+            text-transform: uppercase;
+            color: #ffffff;
+        }
+        .risk-badge.critical { background-color: #ff4757; }
+        .risk-badge.high { background-color: #ff6b81; }
+        .risk-badge.medium { background-color: #ffa502; }
+        .risk-badge.low { background-color: #2ed573; }
+        
+        /* Findings / Vuln Table */
+        .vuln-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            background-color: #ffffff;
+            page-break-inside: avoid;
+        }
+        .vuln-header {
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 15px 20px;
+            display: table;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .vuln-header-left {
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .vuln-header-right {
+            display: table-cell;
+            text-align: right;
+            vertical-align: middle;
+            width: 120px;
+        }
+        .vuln-title {
+            font-size: 14pt;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+        }
+        .vuln-category {
+            font-size: 9pt;
+            color: #64748b;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .vuln-body {
+            padding: 20px;
+        }
+        .vuln-meta-label {
+            font-weight: 700;
+            color: #475569;
+            font-size: 10pt;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+        .vuln-meta-content {
+            margin-bottom: 15px;
+            font-size: 11pt;
+            color: #334155;
+        }
+        .vuln-meta-content.evidence {
+            background-color: #f1f5f9;
+            font-family: monospace;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 9pt;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        
+        /* Verification box */
+        .verification-box {
+            background-color: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 40px;
+            font-size: 10pt;
+            color: #475569;
+        }
+        .verification-title {
+            font-size: 11pt;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .verification-hash {
+            font-family: monospace;
+            font-size: 9pt;
+            background-color: #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 4px;
+            color: #0f172a;
+            word-break: break-all;
+            display: inline-block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- COVER PAGE -->
+    <div class="cover-page">
+        <div>
+            <h1 class="cover-logo-title">WebGuard Pro</h1>
+            <p class="cover-logo-subtitle">Scan. Detect. Protect.</p>
+            <div class="cover-divider"></div>
+        </div>
+        
+        <div>
+            <p style="font-size: 12pt; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Security & Performance Audit</p>
+            <div class="cover-scan-target">{{ scan_request.url }}</div>
+            
+            <div class="cover-score-badge">
+                <div class="cover-score-val">{{ result.health_score }}%</div>
+                <div class="cover-score-label">Overall Health Grade: {{ grade }}</div>
+            </div>
+        </div>
+        
+        <div class="cover-meta">
+            <strong>Report Date:</strong> {{ created_at.strftime('%B %d, %Y') }}<br>
+            <strong>Scan Type:</strong> <span style="text-transform: capitalize;">{{ scan_request.scan_type }} Scan</span><br>
+            <strong>Report ID:</strong> {{ report_id }}
+        </div>
+    </div>
+
+    <!-- PAGE BREAK -->
+    <div class="page-break"></div>
+
+    <!-- EXECUTIVE SUMMARY -->
+    <h2 class="section-title">Executive Summary</h2>
+    <p>
+        On <strong>{{ created_at.strftime('%B %d, %Y') }}</strong>, WebGuard Pro conducted an automated website security, search engine optimization (SEO), code quality, and performance audit on the target domain: <strong>{{ scan_request.url }}</strong>.
+    </p>
+    
+    <p>
+        Based on our scoring criteria, the target site received an overall health rating of <strong>{{ result.health_score }}%</strong>, achieving a grade of <strong>{{ grade }}</strong>.
+        The overall risk rating is classified as 
+        {% if risk_level == 'critical' %}
+            <span class="risk-badge critical">Critical Risk</span>. Immediate security intervention is highly recommended.
+        {% elif risk_level == 'high' %}
+            <span class="risk-badge critical">High Risk</span>. Major vulnerabilities were detected that should be resolved quickly.
+        {% elif risk_level == 'medium' %}
+            <span class="risk-badge medium">Medium Risk</span>. Several moderate concerns require attention.
+        {% else %}
+            <span class="risk-badge low">Low Risk</span>. The website meets key standard security requirements.
+        {% endif %}
+    </p>
+
+    <h3 style="margin-top: 30px;">Category Scoring Breakdown</h3>
+    <div class="grid-container">
+        <div class="grid-row">
+            <div class="grid-cell">
+                <div class="score-card">
+                    <div class="score-card-title">Security Score</div>
+                    <div class="score-card-value {% if result.security_score >= 80 %}good{% elif result.security_score >= 50 %}medium{% else %}poor{% endif %}">{{ result.security_score }}/100</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if result.security_score >= 80 %}good-bg{% elif result.security_score >= 50 %}medium-bg{% else %}poor-bg{% endif %}" style="width: {{ result.security_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-cell">
+                <div class="score-card">
+                    <div class="score-card-title">SEO Optimization</div>
+                    <div class="score-card-value {% if result.seo_score >= 80 %}good{% elif result.seo_score >= 50 %}medium{% else %}poor{% endif %}">{{ result.seo_score }}/100</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if result.seo_score >= 80 %}good-bg{% elif result.seo_score >= 50 %}medium-bg{% else %}poor-bg{% endif %}" style="width: {{ result.seo_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-cell">
+                <div class="score-card">
+                    <div class="score-card-title">Performance</div>
+                    <div class="score-card-value {% if result.performance_score >= 80 %}good{% elif result.performance_score >= 50 %}medium{% else %}poor{% endif %}">{{ result.performance_score }}/100</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if result.performance_score >= 80 %}good-bg{% elif result.performance_score >= 50 %}medium-bg{% else %}poor-bg{% endif %}" style="width: {{ result.performance_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="grid-row">
+            <div class="grid-cell">
+                <div class="score-card">
+                    <div class="score-card-title">Code Quality</div>
+                    <div class="score-card-value {% if result.code_quality_score >= 80 %}good{% elif result.code_quality_score >= 50 %}medium{% else %}poor{% endif %}">{{ result.code_quality_score }}/100</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if result.code_quality_score >= 80 %}good-bg{% elif result.code_quality_score >= 50 %}medium-bg{% else %}poor-bg{% endif %}" style="width: {{ result.code_quality_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-cell">
+                <div class="score-card">
+                    <div class="score-card-title">Accessibility</div>
+                    <div class="score-card-value {% if result.accessibility_score >= 80 %}good{% elif result.accessibility_score >= 50 %}medium{% else %}poor{% endif %}">{{ result.accessibility_score }}/100</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if result.accessibility_score >= 80 %}good-bg{% elif result.accessibility_score >= 50 %}medium-bg{% else %}poor-bg{% endif %}" style="width: {{ result.accessibility_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-cell">
+                <div class="score-card">
+                    <div class="score-card-title">Mobile Usability</div>
+                    <div class="score-card-value {% if result.mobile_score >= 80 %}good{% elif result.mobile_score >= 50 %}medium{% else %}poor{% endif %}">{{ result.mobile_score }}/100</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill {% if result.mobile_score >= 80 %}good-bg{% elif result.mobile_score >= 50 %}medium-bg{% else %}poor-bg{% endif %}" style="width: {{ result.mobile_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-top: 35px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">Category Performance Charts</h3>
+    <div style="margin-top: 15px; width: 100%;">
+        <!-- Security Chart -->
+        <div style="margin-bottom: 15px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 150px; font-weight: 700; color: #475569; font-size: 9pt; vertical-align: middle; text-transform: uppercase;">SECURITY</div>
+            <div style="display: table-cell; vertical-align: middle; padding: 0 10px;">
+                <div style="background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; height: 16px; overflow: hidden; width: 100%;">
+                    <div style="background-color: #ff4757; height: 100%; width: {{ result.security_score }}%; background-image: linear-gradient(90deg, #ff4757, #ff6b81);"></div>
+                </div>
+            </div>
+            <div style="display: table-cell; width: 50px; text-align: right; font-weight: 700; font-size: 10pt; color: #0f172a; vertical-align: middle;">{{ result.security_score }}%</div>
+        </div>
+        <!-- SEO Chart -->
+        <div style="margin-bottom: 15px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 150px; font-weight: 700; color: #475569; font-size: 9pt; vertical-align: middle; text-transform: uppercase;">SEO AUDIT</div>
+            <div style="display: table-cell; vertical-align: middle; padding: 0 10px;">
+                <div style="background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; height: 16px; overflow: hidden; width: 100%;">
+                    <div style="background-color: #2ed573; height: 100%; width: {{ result.seo_score }}%; background-image: linear-gradient(90deg, #2ed573, #57e58a);"></div>
+                </div>
+            </div>
+            <div style="display: table-cell; width: 50px; text-align: right; font-weight: 700; font-size: 10pt; color: #0f172a; vertical-align: middle;">{{ result.seo_score }}%</div>
+        </div>
+        <!-- Performance Chart -->
+        <div style="margin-bottom: 15px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 150px; font-weight: 700; color: #475569; font-size: 9pt; vertical-align: middle; text-transform: uppercase;">PERFORMANCE</div>
+            <div style="display: table-cell; vertical-align: middle; padding: 0 10px;">
+                <div style="background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; height: 16px; overflow: hidden; width: 100%;">
+                    <div style="background-color: #ffa502; height: 100%; width: {{ result.performance_score }}%; background-image: linear-gradient(90deg, #ffa502, #ffc048);"></div>
+                </div>
+            </div>
+            <div style="display: table-cell; width: 50px; text-align: right; font-weight: 700; font-size: 10pt; color: #0f172a; vertical-align: middle;">{{ result.performance_score }}%</div>
+        </div>
+        <!-- Code Quality Chart -->
+        <div style="margin-bottom: 15px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 150px; font-weight: 700; color: #475569; font-size: 9pt; vertical-align: middle; text-transform: uppercase;">CODE QUALITY</div>
+            <div style="display: table-cell; vertical-align: middle; padding: 0 10px;">
+                <div style="background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; height: 16px; overflow: hidden; width: 100%;">
+                    <div style="background-color: #00b4d8; height: 100%; width: {{ result.code_quality_score }}%; background-image: linear-gradient(90deg, #00b4d8, #00d4ff);"></div>
+                </div>
+            </div>
+            <div style="display: table-cell; width: 50px; text-align: right; font-weight: 700; font-size: 10pt; color: #0f172a; vertical-align: middle;">{{ result.code_quality_score }}%</div>
+        </div>
+        <!-- Accessibility Chart -->
+        <div style="margin-bottom: 15px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 150px; font-weight: 700; color: #475569; font-size: 9pt; vertical-align: middle; text-transform: uppercase;">ACCESSIBILITY</div>
+            <div style="display: table-cell; vertical-align: middle; padding: 0 10px;">
+                <div style="background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; height: 16px; overflow: hidden; width: 100%;">
+                    <div style="background-color: #a78bfa; height: 100%; width: {{ result.accessibility_score }}%; background-image: linear-gradient(90deg, #a78bfa, #c084fc);"></div>
+                </div>
+            </div>
+            <div style="display: table-cell; width: 50px; text-align: right; font-weight: 700; font-size: 10pt; color: #0f172a; vertical-align: middle;">{{ result.accessibility_score }}%</div>
+        </div>
+        <!-- Mobile Usability Chart -->
+        <div style="margin-bottom: 15px; display: table; width: 100%;">
+            <div style="display: table-cell; width: 150px; font-weight: 700; color: #475569; font-size: 9pt; vertical-align: middle; text-transform: uppercase;">MOBILE USABILITY</div>
+            <div style="display: table-cell; vertical-align: middle; padding: 0 10px;">
+                <div style="background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; height: 16px; overflow: hidden; width: 100%;">
+                    <div style="background-color: #ff9f43; height: 100%; width: {{ result.mobile_score }}%; background-image: linear-gradient(90deg, #ff9f43, #ffb142);"></div>
+                </div>
+            </div>
+            <div style="display: table-cell; width: 50px; text-align: right; font-weight: 700; font-size: 10pt; color: #0f172a; vertical-align: middle;">{{ result.mobile_score }}%</div>
+        </div>
+    </div>
+
+    <!-- PAGE BREAK -->
+    <div class="page-break"></div>
+
+    <!-- DETAILED VULNERABILITIES -->
+    <h2 class="section-title">Detailed Audit Findings</h2>
+    
+    {% if not vulnerabilities %}
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; color: #166534; font-weight: 500;">
+            Congratulations! No major security vulnerabilities or header misconfigurations were identified during this scan.
+        </div>
+    {% else %}
+        <p>The following vulnerabilities and configuration deficiencies were identified during the automated audit:</p>
+        
+        {% for vuln in vulnerabilities %}
+            <div class="vuln-item">
+                <div class="vuln-header">
+                    <div class="vuln-header-left">
+                        <h4 class="vuln-title">{{ vuln.title }}</h4>
+                        <div class="vuln-category">{{ vuln.owasp_category or 'General Vulnerability' }}</div>
+                    </div>
+                    <div class="vuln-header-right">
+                        <span class="risk-badge {{ vuln.severity|lower }}">{{ vuln.severity }}</span>
+                    </div>
+                </div>
+                <div class="vuln-body">
+                    <div class="vuln-meta-label">Description</div>
+                    <div class="vuln-meta-content">{{ vuln.description }}</div>
+                    
+                    {% if vuln.evidence %}
+                        <div class="vuln-meta-label">Evidence</div>
+                        <div class="vuln-meta-content evidence">{{ vuln.evidence }}</div>
+                    {% endif %}
+                    
+                    {% if vuln.remediation %}
+                        <div class="vuln-meta-label">Remediation / Solution</div>
+                        <div class="vuln-meta-content" style="color: #1e293b; font-weight: 500; border-left: 3px solid #00b4d8; padding-left: 12px; margin-bottom: 0;">
+                            {{ vuln.remediation }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- VERIFICATION PAGE -->
+    <div class="verification-box">
+        <div class="verification-title">Verification of Report Authenticity</div>
+        <p style="margin: 0 0 10px 0;">
+            To verify that this report was officially generated by WebGuard Pro and has not been altered or falsified,
+            you can upload this document or check its integrity signature hash on our verification portal at:
+        </p>
+        <a href="{{ frontend_url }}/reports/verify/{{ report_hash }}/" style="color: #00b4d8; font-weight: 600; text-decoration: none;">
+            {{ frontend_url }}/reports/verify/{{ report_hash }}/
+        </a>
+        <br>
+        <span class="verification-hash">{{ report_hash }}</span>
+    </div>
+
+</body>
+</html>
